@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lease Risk Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: #E9E6DD;
+    color: #232019;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
+  .headline {
+    font-family: 'Source Serif 4', serif;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 600;
+    line-height: 1.15;
+    color: #1C1A15;
+    max-width: 620px;
+  }
+  .sub { margin-top: 12px; font-size: 15.5px; line-height: 1.6; color: #5B5648; max-width: 540px; }
+  .input-box { background: #F7F5EF; border: 1px solid #D8D3C4; border-radius: 4px; padding: 20px; }
+  textarea {
+    width: 100%; min-height: 220px; resize: vertical;
+    border: 1px solid #D8D3C4; border-radius: 3px; padding: 14px;
+    font-family: 'Source Serif 4', serif; font-size: 15px; line-height: 1.6;
+    background: #fff; color: #232019;
+  }
+  textarea:focus-visible, button:focus-visible { outline: 2px solid #A33B32; outline-offset: 2px; }
+  .row { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  button { font-family: 'IBM Plex Sans', sans-serif; font-size: 14.5px; border-radius: 3px; cursor: pointer; }
+  #analyzeBtn { background: #232019; color: #F7F5EF; border: none; padding: 11px 22px; font-weight: 500; }
+  #analyzeBtn:disabled { background: #B7B2A2; cursor: not-allowed; }
+  #sampleBtn { background: transparent; color: #5B5648; border: 1px solid #D8D3C4; padding: 11px 18px; }
+  .err { color: #A33B32; font-size: 13.5px; }
+  .loading { margin-top: 28px; color: #8A8471; font-size: 14px; font-style: italic; font-family: 'Source Serif 4', serif; }
+  .summary-row { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .legend { display: flex; gap: 18px; font-size: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .reset-link { background: none; border: none; color: #8A8471; font-size: 13.5px; text-decoration: underline; }
+  .questions-box { background: #232019; color: #F7F5EF; border-radius: 4px; padding: 20px 24px; margin-bottom: 28px; }
+  .questions-box .qtitle { font-family: 'Source Serif 4', serif; font-size: 17px; font-weight: 600; margin-bottom: 10px; }
+  .questions-box ol { margin: 0; padding-left: 20px; font-size: 14.5px; line-height: 1.8; color: #E6E2D6; }
+  .doc-wrap { display: flex; gap: 0; align-items: flex-start; }
+  .doc { flex: 1 1 60%; background: #fff; border: 1px solid #D8D3C4; border-right: none; border-radius: 4px 0 0 4px; padding: 8px 0; }
+  .clause { padding: 14px 20px 14px 18px; cursor: pointer; transition: background-color .15s ease; }
+  .clause-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+  .clause-num { font-family: 'IBM Plex Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: #8A8471; }
+  .clause-status { font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; font-weight: 500; }
+  .clause-text { font-family: 'Source Serif 4', serif; font-size: 15px; line-height: 1.65; color: #232019; }
+  .margin { flex: 0 0 40%; min-height: 200px; background: #F0ECE0; border: 1px solid #D8D3C4; border-radius: 0 4px 4px 0; padding: 20px 18px; position: sticky; top: 12px; }
+  .margin-hint { font-family: 'Caveat', cursive; font-size: 19px; color: #8A8471; line-height: 1.5; }
+  .margin-label { font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; font-weight: 600; margin-bottom: 8px; }
+  .margin-note { font-family: 'Caveat', cursive; font-size: 22px; line-height: 1.4; color: #3A362B; }
+  .disclaimer { margin-top: 20px; font-size: 12.5px; color: #8A8471; line-height: 1.6; }
+  @media (max-width: 700px) {
+    .doc-wrap { flex-direction: column; }
+    .doc, .margin { flex: 1 1 100%; border-radius: 4px; border-right: 1px solid #D8D3C4; }
+    .margin { position: static; margin-top: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="headline">Know what you're signing before you sign it.</div>
+  <p class="sub">Paste your lease below. Every clause gets checked against what's typical for a residential lease, so the things worth a second look are easy to find.</p>
+
+  <div id="inputBox" class="input-box">
+    <textarea id="leaseText" placeholder="Paste the full text of your lease here..."></textarea>
+    <div class="row">
+      <button id="analyzeBtn" disabled>Check this lease</button>
+      <button id="sampleBtn">Try a sample lease instead</button>
+      <span id="errMsg" class="err" style="display:none;"></span>
+    </div>
+  </div>
+
+  <div id="loadingMsg" class="loading" style="display:none;">Comparing each clause against typical lease terms…</div>
+
+  <div id="results" style="display:none;">
+    <div class="summary-row">
+      <div class="legend" id="legend"></div>
+      <button class="reset-link" id="resetBtn">Check a different lease</button>
+    </div>
+    <div class="questions-box">
+      <div class="qtitle">Ask before you sign</div>
+      <ol id="questionsList"></ol>
+    </div>
+    <div class="doc-wrap">
+      <div class="doc" id="docClauses"></div>
+      <div class="margin" id="marginPane">
+        <div class="margin-hint">Hover or tap a clause to see the note here.</div>
+      </div>
+    </div>
+    <p class="disclaimer">This is a general comparison against typical lease terms, not legal advice. For anything flagged risky, it's worth a quick read from a local tenants' rights resource or a lawyer before you sign.</p>
+  </div>
+</div>
+
+<script>
+const SAMPLE_LEASE = `RESIDENTIAL LEASE AGREEMENT
+
+1. TERM. This lease begins on the 1st day of the month and continues for twelve (12) months, after which it converts automatically to a month-to-month tenancy at a rate 15% higher than the final monthly rent under this lease, unless either party gives 60 days written notice.
+
+2. RENT. Tenant shall pay $1,850.00 per month, due on the 1st. A late fee of $150 plus $25 per day will be charged for any payment received after the 1st, with no grace period.
+
+3. SECURITY DEPOSIT. Tenant shall pay a security deposit of $3,700.00. Landlord may deduct for damages, unpaid rent, and "general wear requiring restoration," at Landlord's sole discretion, and is not required to provide an itemized list of deductions.
+
+4. REPAIRS. Landlord shall maintain the property in habitable condition and respond to repair requests within a reasonable time.
+
+5. ENTRY. Landlord may enter the premises at any time, without advance notice, for any purpose Landlord deems necessary.
+
+6. SUBLETTING. Tenant may not sublet or assign this lease without Landlord's prior written consent, which shall not be unreasonably withheld.
+
+7. EARLY TERMINATION. Should Tenant vacate before the end of the term for any reason, Tenant remains liable for 100% of the remaining rent due under the lease, with no obligation on Landlord's part to re-rent the unit.
+
+8. PETS. No pets are allowed without prior written approval and payment of a $500 non-refundable pet fee per animal.
+
+9. ATTORNEY'S FEES. In any dispute arising from this lease, the prevailing party shall be entitled to recover reasonable attorney's fees from the other party.
+
+10. GOVERNING LAW. This lease shall be governed by the laws of the state in which the property is located.`;
+
+const STATUS_META = {
+  standard: { label: "Standard", color: "#3F6B4A", bg: "#EEF3EC" },
+  unusual: { label: "Unusual", color: "#A16A1F", bg: "#F7F0E3" },
+  risky: { label: "Risky for you", color: "#A33B32", bg: "#F8ECEA" },
+};
+
+const leaseTextEl = document.getElementById("leaseText");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const sampleBtn = document.getElementById("sampleBtn");
+const errMsg = document.getElementById("errMsg");
+const inputBox = document.getElementById("inputBox");
+const loadingMsg = document.getElementById("loadingMsg");
+const results = document.getElementById("results");
+const legend = document.getElementById("legend");
+const questionsList = document.getElementById("questionsList");
+const docClauses = document.getElementById("docClauses");
+const marginPane = document.getElementById("marginPane");
+const resetBtn = document.getElementById("resetBtn");
+
+let currentResult = null;
+
+leaseTextEl.addEventListener("input", () => {
+  analyzeBtn.disabled = !leaseTextEl.value.trim();
+  analyzeBtn.style.background = leaseTextEl.value.trim() ? "#232019" : "#B7B2A2";
+});
+
+sampleBtn.addEventListener("click", () => {
+  leaseTextEl.value = SAMPLE_LEASE;
+  analyzeBtn.disabled = false;
+  analyzeBtn.style.background = "#232019";
+});
+
+resetBtn.addEventListener("click", () => {
+  results.style.display = "none";
+  inputBox.style.display = "block";
+  leaseTextEl.value = "";
+  analyzeBtn.disabled = true;
+  analyzeBtn.style.background = "#B7B2A2";
+});
+
+analyzeBtn.addEventListener("click", async () => {
+  const leaseText = leaseTextEl.value.trim();
+  if (!leaseText) return;
+
+  errMsg.style.display = "none";
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "Reading your lease…";
+  inputBox.style.display = "block";
+  loadingMsg.style.display = "block";
+  results.style.display = "none";
+
+  try {
+    const resp = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leaseText }),
+    });
+    if (!resp.ok) throw new Error("Request failed");
+    const data = await resp.json();
+    currentResult = data;
+    renderResults(data);
+    inputBox.style.display = "none";
+    loadingMsg.style.display = "none";
+    results.style.display = "block";
+  } catch (e) {
+    loadingMsg.style.display = "none";
+    errMsg.textContent = "Something went wrong reading that. Try again, or check the text was pasted in full.";
+    errMsg.style.display = "inline";
+  } finally {
+    analyzeBtn.disabled = !leaseTextEl.value.trim();
+    analyzeBtn.textContent = "Check this lease";
+  }
+});
+
+function renderResults(data) {
+  const counts = data.clauses.reduce((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  legend.innerHTML = ["risky", "unusual", "standard"].map(s => `
+    <div class="legend-item">
+      <span class="dot" style="background:${STATUS_META[s].color}"></span>
+      <span style="color:#5B5648;">${counts[s] || 0} ${STATUS_META[s].label.toLowerCase()}</span>
+    </div>
+  `).join("");
+
+  questionsList.innerHTML = data.questions.map(q => `<li>${escapeHtml(q)}</li>`).join("");
+
+  docClauses.innerHTML = data.clauses.map((c, i) => {
+    const meta = STATUS_META[c.status] || STATUS_META.standard;
+    return `
+      <div class="clause" data-idx="${i}" style="border-left:4px solid ${meta.color};">
+        <div class="clause-head">
+          <span class="clause-num">${escapeHtml(c.number)}. ${escapeHtml(c.title)}</span>
+          <span class="clause-status" style="color:${meta.color}">${meta.label}</span>
+        </div>
+        <div class="clause-text">${escapeHtml(c.text)}</div>
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll(".clause").forEach(el => {
+    el.addEventListener("mouseenter", () => showNote(el.dataset.idx));
+    el.addEventListener("mouseleave", () => resetMargin());
+    el.addEventListener("click", () => showNote(el.dataset.idx));
+  });
+}
+
+function showNote(idxStr) {
+  const idx = parseInt(idxStr, 10);
+  const c = currentResult.clauses[idx];
+  const meta = STATUS_META[c.status] || STATUS_META.standard;
+  marginPane.innerHTML = `
+    <div class="margin-label" style="color:${meta.color}">${meta.label}</div>
+    <div class="margin-note">${escapeHtml(c.note)}</div>
+  `;
+  document.querySelectorAll(".clause").forEach((el, i) => {
+    el.style.background = i === idx ? meta.bg : "transparent";
+  });
+}
+
+function resetMargin() {
+  // keep last hovered note visible until another is hovered; do nothing on leave
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
